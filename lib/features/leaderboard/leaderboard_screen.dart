@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/permissions.dart';
 import 'join_squad_view_model.dart';
+import 'qr_scan_screen.dart';
 
 class LeaderboardScreen extends StatelessWidget {
   const LeaderboardScreen({super.key});
@@ -224,9 +225,25 @@ class LeaderboardScreen extends StatelessWidget {
                                   return;
                                 }
 
-                                final qrPayload = await _showQrPayloadDialog(
-                                  context,
-                                );
+                                final hasCameraPermission =
+                                    await PermissionManager.requestCameraPermission(
+                                      context,
+                                    );
+
+                                if (!hasCameraPermission) {
+                                  return;
+                                }
+
+                                if (!context.mounted) {
+                                  return;
+                                }
+
+                                final qrPayload = await Navigator.of(context)
+                                    .push<String>(
+                                      MaterialPageRoute<String>(
+                                        builder: (_) => const QrScanScreen(),
+                                      ),
+                                    );
                                 if (qrPayload == null ||
                                     qrPayload.trim().isEmpty) {
                                   return;
@@ -346,39 +363,6 @@ class LeaderboardScreen extends StatelessWidget {
               onPressed: () =>
                   Navigator.of(dialogContext).pop(textController.text.trim()),
               child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<String?> _showQrPayloadDialog(BuildContext context) async {
-    final textController = TextEditingController(
-      text: JoinSquadViewModel.buildSampleQrPayload(),
-    );
-
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Scan QR Payload'),
-          content: TextField(
-            controller: textController,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              hintText: 'Paste QR payload JSON',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(textController.text.trim()),
-              child: const Text('Join'),
             ),
           ],
         );

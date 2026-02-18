@@ -24,7 +24,12 @@ class PermissionManager {
     );
 
     if (hasPermanentlyDeniedPermission && context.mounted) {
-      await _showOpenSettingsDialog(context);
+      await _showOpenSettingsDialog(
+        context,
+        message:
+            'Location, Nearby Wi-Fi Devices, and Bluetooth Scan permissions are permanently denied. '
+            'Please open app settings and enable them to continue.',
+      );
       return false;
     }
 
@@ -35,16 +40,31 @@ class PermissionManager {
     return allPermissionsGranted;
   }
 
-  static Future<void> _showOpenSettingsDialog(BuildContext context) async {
+  static Future<bool> requestCameraPermission(BuildContext context) async {
+    final cameraStatus = await Permission.camera.request();
+
+    if (cameraStatus.isPermanentlyDenied && context.mounted) {
+      await _showOpenSettingsDialog(
+        context,
+        message:
+            'Camera permission is permanently denied. Please open app settings and enable it to scan QR codes.',
+      );
+      return false;
+    }
+
+    return cameraStatus.isGranted;
+  }
+
+  static Future<void> _showOpenSettingsDialog(
+    BuildContext context, {
+    required String message,
+  }) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Permission Required'),
-          content: const Text(
-            'Location, Nearby Wi-Fi Devices, and Bluetooth Scan permissions are permanently denied. '
-            'Please open app settings and enable them to continue.',
-          ),
+          content: Text(message),
           actions: [
             TextButton(
               onPressed: () {
