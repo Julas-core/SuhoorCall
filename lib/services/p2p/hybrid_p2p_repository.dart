@@ -33,10 +33,12 @@ class HybridP2pRepository implements P2pRepository {
   Stream<P2pTransportEvent> get events => _eventsController.stream;
 
   @override
-  Future<void> startDiscovery() async {
+  Future<void> startDiscovery({String? targetPeerId}) async {
     await _withFallback(
-      primaryAction: () => primaryTransport.startDiscovery(),
-      fallbackAction: () => fallbackTransport.startDiscovery(),
+      primaryAction: () =>
+          primaryTransport.startDiscovery(targetPeerId: targetPeerId),
+      fallbackAction: () =>
+          fallbackTransport.startDiscovery(targetPeerId: targetPeerId),
     );
   }
 

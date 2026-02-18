@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 enum P2pConnectionState {
   idle,
@@ -106,6 +107,55 @@ class HandshakePayload {
   }
 }
 
+class JoinQrPayload {
+  final String peerId;
+  final String peerDisplayName;
+  final String sessionNonce;
+  final String handshakeString;
+  final int protocolVersion;
+  final DateTime timestamp;
+
+  const JoinQrPayload({
+    required this.peerId,
+    required this.peerDisplayName,
+    required this.sessionNonce,
+    required this.handshakeString,
+    required this.protocolVersion,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'peerId': peerId,
+      'peerDisplayName': peerDisplayName,
+      'sessionNonce': sessionNonce,
+      'handshakeString': handshakeString,
+      'protocolVersion': protocolVersion,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  String toEncodedString() {
+    return jsonEncode(toMap());
+  }
+
+  factory JoinQrPayload.fromEncodedString(String encodedPayload) {
+    final decoded = jsonDecode(encodedPayload);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid QR payload format.');
+    }
+
+    return JoinQrPayload(
+      peerId: decoded['peerId'] as String,
+      peerDisplayName: decoded['peerDisplayName'] as String,
+      sessionNonce: decoded['sessionNonce'] as String,
+      handshakeString: decoded['handshakeString'] as String,
+      protocolVersion: decoded['protocolVersion'] as int,
+      timestamp: DateTime.parse(decoded['timestamp'] as String),
+    );
+  }
+}
+
 class P2pPeer {
   final String id;
   final String displayName;
@@ -129,7 +179,7 @@ class P2pTransportEvent {
 
 abstract class P2pTransport {
   Stream<P2pTransportEvent> get events;
-  Future<void> startDiscovery();
+  Future<void> startDiscovery({String? targetPeerId});
   Future<void> stopDiscovery();
   Future<void> connectToPeer(P2pPeer peer);
   Future<void> disconnectFromPeer(String peerId);
@@ -167,7 +217,7 @@ class SessionNonceHandshakeVerifier implements HandshakeVerifier {
 
 abstract class P2pRepository {
   Stream<P2pTransportEvent> get events;
-  Future<void> startDiscovery();
+  Future<void> startDiscovery({String? targetPeerId});
   Future<void> stopDiscovery();
   Future<void> connectToPeer(P2pPeer peer);
   Future<void> disconnectFromPeer(String peerId);
