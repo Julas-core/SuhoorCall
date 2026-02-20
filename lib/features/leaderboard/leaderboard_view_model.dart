@@ -25,7 +25,7 @@ class LeaderboardViewModel extends ChangeNotifier {
   String get selectedPeriod => _selectedPeriod;
 
   // Mock Data matching the screenshot
-  List<LeaderboardEntry> _entries = [
+  final List<LeaderboardEntry> _entries = [
     LeaderboardEntry(
       rank: 1,
       name: 'Yusuf',

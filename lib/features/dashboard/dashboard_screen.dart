@@ -147,7 +147,7 @@ class _WakeUpButton extends StatelessWidget {
           return;
         }
 
-        viewModel.toggleAwakeStatus();
+        await viewModel.wakeEveryone();
       },
       child: Center(
         child: Container(

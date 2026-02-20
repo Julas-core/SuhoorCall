@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/challenge/challenge_screen.dart';
 import 'features/leaderboard/leaderboard_screen.dart'; // Import LeaderboardScreen
+import 'features/leaderboard/join_squad_view_model.dart';
 import 'features/dashboard/dashboard_view_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -58,8 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Consumer<DashboardViewModel>(
               builder: (context, viewModel, _) {
                 return ChallengeScreen(
-                  onDismissed: () {
+                  onDismissed: () async {
                     viewModel.markAsAwake();
+                    await JoinSquadViewModel.markCurrentDeviceAwakePersisted();
                     _navigateToDashboardAndMarkAwake();
                   },
                 );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/permissions.dart';
 import 'join_squad_view_model.dart';
@@ -190,15 +192,124 @@ class LeaderboardScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 30),
+                    if (viewModel.activeCircleId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 280),
+                          switchInCurve: Curves.easeOutBack,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, animation) {
+                            return ScaleTransition(
+                              scale: animation,
+                              child: child,
+                            );
+                          },
+                          child: Text(
+                            'Circle ID: ${viewModel.activeCircleId} • Members: ${viewModel.joinedMembersCount}',
+                            key: ValueKey<int>(viewModel.joinedMembersCount),
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFFA4ABBE),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    SizedBox(
+                      height: 72,
+                      child: ElevatedButton.icon(
+                        onPressed: viewModel.isGeneratingQr
+                            ? null
+                            : () async {
+                                final joinSquadViewModel = context
+                                    .read<JoinSquadViewModel>();
+                                final messenger = ScaffoldMessenger.of(context);
+
+                                final invitationPayload =
+                                    await joinSquadViewModel
+                                        .createCircleAndBuildInvitation();
+
+                                if (!context.mounted) {
+                                  return;
+                                }
+
+                                await _showHostQrDialog(
+                                  context,
+                                  viewModel: joinSquadViewModel,
+                                  invitationPayload: invitationPayload,
+                                );
+
+                                if (context.mounted) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Circle QR ready to share'),
+                                    ),
+                                  );
+                                }
+                              },
+                        icon: const Icon(Icons.qr_code, size: 28),
+                        label: Text(
+                          'Create Circle',
+                          style: GoogleFonts.poppins(
+                            fontSize: 40 / 2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF20305A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     if (viewModel.members.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          'Squad members: ${viewModel.members.map((member) => member.displayName).join(', ')}',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFFA4ABBE),
-                            fontSize: 14,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111822),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Confirmation Tracking',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Awake: ${viewModel.awakeCount} • Not yet awake: ${viewModel.notYetAwakeCount} • Unreachable: ${viewModel.unreachableCount}',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  color: const Color(0xFFA4ABBE),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              ...viewModel.members.map(
+                                (member) => _MemberStatusRow(
+                                  member: member,
+                                  onStatusSelected: (status) async {
+                                    await context
+                                        .read<JoinSquadViewModel>()
+                                        .setMemberWakeStatus(member.id, status);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -341,6 +452,115 @@ class LeaderboardScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _showHostQrDialog(
+    BuildContext context, {
+    required JoinSquadViewModel viewModel,
+    required String invitationPayload,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return ChangeNotifierProvider<JoinSquadViewModel>.value(
+          value: viewModel,
+          child: Consumer<JoinSquadViewModel>(
+            builder: (context, liveViewModel, _) {
+              final circleId =
+                  liveViewModel.hostCircleId ?? liveViewModel.activeCircleId;
+              final joinedMembersCount = liveViewModel.joinedMembersCount;
+
+              return AlertDialog(
+                backgroundColor: const Color(0xFF111822),
+                title: Text(
+                  'Your Circle QR',
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: QrImageView(
+                          data: invitationPayload,
+                          size: 220,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Color(0xFF0F3460),
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Color(0xFF0F3460),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Have your friends scan this code to join your circle.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFFA4ABBE),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutBack,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          );
+                        },
+                        child: Text(
+                          circleId == null
+                              ? 'Members joined: $joinedMembersCount'
+                              : 'Circle ID: $circleId\nMembers joined: $joinedMembersCount',
+                          key: ValueKey<int>(joinedMembersCount),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF00F5A0),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: invitationPayload),
+                      );
+
+                      if (!dialogContext.mounted) {
+                        return;
+                      }
+
+                      Navigator.of(dialogContext).pop();
+                    },
+                    child: const Text('Copy'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Future<String?> _showAddMemberDialog(BuildContext context) async {
     final textController = TextEditingController();
 
@@ -368,6 +588,83 @@ class LeaderboardScreen extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _MemberStatusRow extends StatelessWidget {
+  final SquadMember member;
+  final ValueChanged<MemberWakeStatus> onStatusSelected;
+
+  const _MemberStatusRow({
+    required this.member,
+    required this.onStatusSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = _badgeData(member.wakeStatus);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              member.displayName,
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: color.withOpacity(0.7)),
+            ),
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<MemberWakeStatus>(
+            icon: const Icon(Icons.more_horiz, color: Colors.white70, size: 20),
+            onSelected: onStatusSelected,
+            itemBuilder: (context) {
+              return const [
+                PopupMenuItem(
+                  value: MemberWakeStatus.awake,
+                  child: Text('Mark Awake'),
+                ),
+                PopupMenuItem(
+                  value: MemberWakeStatus.notYetAwake,
+                  child: Text('Mark Not yet awake'),
+                ),
+                PopupMenuItem(
+                  value: MemberWakeStatus.unreachable,
+                  child: Text('Mark Unreachable'),
+                ),
+              ];
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  (String, Color) _badgeData(MemberWakeStatus status) {
+    switch (status) {
+      case MemberWakeStatus.awake:
+        return ('Awake', const Color(0xFF00F58D));
+      case MemberWakeStatus.notYetAwake:
+        return ('Not yet awake', const Color(0xFFFFC857));
+      case MemberWakeStatus.unreachable:
+        return ('Unreachable', const Color(0xFFE94560));
+    }
   }
 }
 

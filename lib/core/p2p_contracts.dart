@@ -108,6 +108,7 @@ class HandshakePayload {
 }
 
 class JoinQrPayload {
+  final String? circleId;
   final String peerId;
   final String peerDisplayName;
   final String sessionNonce;
@@ -116,6 +117,7 @@ class JoinQrPayload {
   final DateTime timestamp;
 
   const JoinQrPayload({
+    this.circleId,
     required this.peerId,
     required this.peerDisplayName,
     required this.sessionNonce,
@@ -126,6 +128,7 @@ class JoinQrPayload {
 
   Map<String, dynamic> toMap() {
     return {
+      'circleId': circleId,
       'peerId': peerId,
       'peerDisplayName': peerDisplayName,
       'sessionNonce': sessionNonce,
@@ -146,6 +149,7 @@ class JoinQrPayload {
     }
 
     return JoinQrPayload(
+      circleId: decoded['circleId'] as String?,
       peerId: decoded['peerId'] as String,
       peerDisplayName: decoded['peerDisplayName'] as String,
       sessionNonce: decoded['sessionNonce'] as String,
