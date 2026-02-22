@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/permissions.dart';
+import '../../core/wake_status_presenter.dart';
 import 'join_squad_view_model.dart';
 import 'qr_scan_screen.dart';
 
@@ -602,7 +603,9 @@ class _MemberStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = _badgeData(member.wakeStatus);
+    final statusPresentation = WakeStatusPresenter.present(member.wakeStatus);
+    final label = statusPresentation.label;
+    final color = statusPresentation.color;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -654,17 +657,6 @@ class _MemberStatusRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  (String, Color) _badgeData(MemberWakeStatus status) {
-    switch (status) {
-      case MemberWakeStatus.awake:
-        return ('Awake', const Color(0xFF00F58D));
-      case MemberWakeStatus.notYetAwake:
-        return ('Not yet awake', const Color(0xFFFFC857));
-      case MemberWakeStatus.unreachable:
-        return ('Unreachable', const Color(0xFFE94560));
-    }
   }
 }
 

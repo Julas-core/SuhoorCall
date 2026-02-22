@@ -15,6 +15,8 @@ class PermissionManager {
       Permission.locationWhenInUse,
       Permission.nearbyWifiDevices,
       Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.bluetoothAdvertise,
     ];
 
     final permissionStatuses = await permissionsToRequest.request();
@@ -27,7 +29,7 @@ class PermissionManager {
       await _showOpenSettingsDialog(
         context,
         message:
-            'Location, Nearby Wi-Fi Devices, and Bluetooth Scan permissions are permanently denied. '
+            'Location, Nearby Wi-Fi and Bluetooth permissions are permanently denied. '
             'Please open app settings and enable them to continue.',
       );
       return false;

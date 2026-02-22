@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
+import 'services/alarm/alarm_service.dart';
 
-void main() {
+/// Global navigator key used by [AlarmService] to push the Challenge screen
+/// when an alarm fires while the app is in the background.
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Pre-initialize alarm service so persisted alarm state is ready on startup.
+  await AlarmService().ensureInitialized();
   runApp(const SuhoorApp());
 }
 
@@ -14,6 +22,7 @@ class SuhoorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Suhoor Wake-Up Circle',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: _buildTheme(context),
       home: const HomeScreen(),
     );

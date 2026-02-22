@@ -1,114 +1,102 @@
 import 'package:flutter/material.dart';
 
-class LeaderboardEntry {
-  final int rank;
-  final String name;
-  final int score; // Points or current score
-  final String streak;
-  final bool isNudged;
-  final bool isCompleted; // If they are already awake/done for the day
-  final String avatarUrl; // Mock, using first letter or icon for now
+import '../../services/leaderboard/history_service.dart';
 
-  LeaderboardEntry({
-    required this.rank,
-    required this.name,
-    required this.score,
-    required this.streak,
-    this.isNudged = false,
-    this.isCompleted = false,
-    required this.avatarUrl,
-  });
-}
+export '../../services/leaderboard/history_service.dart'
+    show LeaderboardEntry, StreakInfo;
 
 class LeaderboardViewModel extends ChangeNotifier {
+  final HistoryService _historyService;
+  VoidCallback? _historyListener;
+
   String _selectedPeriod = 'This Week';
   String get selectedPeriod => _selectedPeriod;
 
-  // Mock Data matching the screenshot
-  final List<LeaderboardEntry> _entries = [
-    LeaderboardEntry(
-      rank: 1,
-      name: 'Yusuf',
-      score: 24,
-      streak: '18 Day Streak',
-      avatarUrl: 'Y',
-      isCompleted: true,
-    ),
-    LeaderboardEntry(
-      rank: 2,
-      name: 'Sarah',
-      score: 21,
-      streak: '15 Day Streak',
-      avatarUrl: 'S',
-      isCompleted: false,
-    ),
-    LeaderboardEntry(
-      rank: 3,
-      name: 'Ahmed',
-      score: 18,
-      streak: '12 Day Streak',
-      avatarUrl: 'A',
-      isCompleted: false,
-    ),
-    LeaderboardEntry(
-      rank: 4,
-      name: 'Fatima Zahra',
-      score: 15,
-      streak: '12 Day Streak',
-      avatarUrl: 'F',
-      isCompleted: false,
-    ),
-    LeaderboardEntry(
-      rank: 5,
-      name: 'Omar K.',
-      score: 12,
-      streak: '8 Day Streak',
-      avatarUrl: 'O',
-      isCompleted: true,
-    ), // Checkmark in screenshot
-    LeaderboardEntry(
-      rank: 6,
-      name: 'Bilal S.',
-      score: 9,
-      streak: '3 Day Streak',
-      avatarUrl: 'B',
-      isCompleted: false,
-    ),
-    LeaderboardEntry(
-      rank: 7,
-      name: 'Zainab',
-      score: 6,
-      streak: '1 Day Streak',
-      avatarUrl: 'Z',
-      isCompleted: false,
-    ),
-  ];
+  LeaderboardViewModel({HistoryService? historyService})
+    : _historyService = historyService ?? HistoryService() {
+    _historyListener = () => notifyListeners();
+    _historyService.addListener(_historyListener!);
+    // Make sure history is loaded before first render.
+    _historyService.ensureInitialized().then((_) => notifyListeners());
+  }
 
-  List<LeaderboardEntry> get topThree => _entries.take(3).toList();
-  List<LeaderboardEntry> get restList => _entries.skip(3).toList();
+  List<LeaderboardEntry> get allEntries => _historyService.computeLeaderboard();
+
+  List<LeaderboardEntry> get topThree => allEntries.take(3).toList();
+  List<LeaderboardEntry> get restList => allEntries.skip(3).toList();
+
+  /// How many days back to consider for "This Week" / "This Month".
+  int get _periodDays {
+    switch (_selectedPeriod) {
+      case 'This Month':
+        return 30;
+      case 'All Time':
+        return 99999;
+      case 'This Week':
+      default:
+        return 7;
+    }
+  }
+
+  /// Returns leaderboard entries filtered to [_periodDays] days.
+  List<LeaderboardEntry> get filteredEntries {
+    final cutoff = DateTime.now().toUtc().subtract(Duration(days: _periodDays));
+    final filtered = _historyService.history
+        .where(
+          (record) =>
+              record.completed &&
+              record.date.isAfter(cutoff),
+        )
+        .toList();
+
+    // Group by memberId
+    final memberMap = <String, ({String displayName, int completed})>{};
+    for (final record in filtered) {
+      final existing = memberMap[record.memberId];
+      if (existing == null) {
+        memberMap[record.memberId] = (
+          displayName: record.displayName,
+          completed: 1,
+        );
+      } else {
+        memberMap[record.memberId] = (
+          displayName: existing.displayName,
+          completed: existing.completed + 1,
+        );
+      }
+    }
+
+    final sorted = memberMap.entries.toList()
+      ..sort((a, b) => b.value.completed.compareTo(a.value.completed));
+
+    return sorted.indexed.map((entry) {
+      final rank = entry.$1 + 1;
+      final memberId = entry.$2.key;
+      final data = entry.$2.value;
+      return LeaderboardEntry(
+        rank: rank,
+        memberId: memberId,
+        displayName: data.displayName,
+        totalCompleted: data.completed,
+        streak: _historyService.computeStreak(memberId),
+      );
+    }).toList();
+  }
+
+  bool get hasHistory => _historyService.history.isNotEmpty;
 
   void setPeriod(String period) {
     _selectedPeriod = period;
-    // simulating data refresh or filter change if needed
     notifyListeners();
   }
 
-  void nudgeUser(int rank) {
-    // In a real app, this would send a P2P message or notification
-    final index = _entries.indexWhere((e) => e.rank == rank);
-    if (index != -1) {
-      final entry = _entries[index];
-      // Toggle nudged state locally to show UI feedback
-      _entries[index] = LeaderboardEntry(
-        rank: entry.rank,
-        name: entry.name,
-        score: entry.score,
-        streak: entry.streak,
-        isNudged: true,
-        isCompleted: entry.isCompleted,
-        avatarUrl: entry.avatarUrl,
-      );
-      notifyListeners();
+  @override
+  void dispose() {
+    final listener = _historyListener;
+    if (listener != null) {
+      _historyService.removeListener(listener);
     }
+    _historyListener = null;
+    super.dispose();
   }
 }
