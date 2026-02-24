@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/circle_models.dart';
 import '../../core/p2p_contracts.dart';
-import '../leaderboard/history_service.dart';
 import '../p2p/p2p_repository_factory.dart';
 
 class WakeCircleService extends ChangeNotifier {
@@ -317,15 +316,8 @@ class WakeCircleService extends ChangeNotifier {
 			);
 		} else {
 			await setMemberWakeStatus(_localPeerId, MemberWakeStatus.awake);
+			return;
 		}
-
-		// Persist wake history so leaderboard and streaks reflect real data.
-		await HistoryService().recordWake(
-			memberId: _localPeerId,
-			displayName: 'You',
-			completed: true,
-			completionTime: DateTime.now().toUtc(),
-		);
 
 		final current = _members.where((member) => member.id == _localPeerId).firstOrNull;
 		if (current != null) {

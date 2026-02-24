@@ -1,6 +1,6 @@
 # Suhoor Wake-Up Circle
 
-Suhoor Wake-Up Circle is a Flutter app for waking up with your squad before Fajr.
+Suhoor Wake-Up Circle is a Flutter app for waking up with your squad.
 It combines a personal wake challenge with a shared squad status flow, so each member can confirm they are awake.
 
 ## Project Goal
@@ -12,19 +12,26 @@ Build a simple, focused social wake-up experience where:
 - Everyone can confirm they are awake.
 - The group can see wake status in one place.
 
-## Current State (as of Feb 2026)
+## Project Status (Updated: Feb 23, 2026)
 
-This is an active MVP/prototype with core flows implemented:
+This project is in **active MVP** state.
 
-- App shell with 3 tabs: Dashboard, Squads (Join), Challenge.
-- Wake challenge (math keypad) used to dismiss/confirm wake-up.
-- Squad joining flow with QR scanner UI and payload handling.
-- Circle state and wake status persistence via SharedPreferences.
-- P2P architecture contracts + hybrid repository (primary + fallback transport).
+### Working now
 
-Important implementation note:
+- App shell with 3 tabs: Dashboard, Squads, Challenge.
+- Alarm scheduling and persistence with the `alarm` package.
+- Wake challenge flow (math keypad) to confirm awake status.
+- Squad join flow using QR scan + payload parsing.
+- Circle/member state persistence via `SharedPreferences`.
+- Leaderboard history, rankings, and streak calculations.
+- Hybrid P2P repository with transport abstraction.
 
-- The current P2P transport classes are scaffolded/simulated (event-driven mock behavior), designed so real Nearby/Wi-Fi Direct integrations can be plugged in behind the same contracts.
+### In progress / not production-ready yet
+
+- Nearby transport is implemented and Android-focused.
+- Wi-Fi P2P transport is still a simulated fallback implementation.
+- End-to-end multi-device reliability testing is still ongoing.
+- UX polish, hardening, and production rollout tasks remain.
 
 ## Screenshots
 
@@ -63,6 +70,16 @@ Suggested captures:
 	- Awake confirmations and member status updates.
 	- Local persistence for peer identity, circle, settings, and active wake event.
 
+- **Alarm Scheduling**
+	- Local alarm setup and cancellation.
+	- Persisted alarm time/state across app restarts.
+	- Alarm-triggered wake-up experience into challenge flow.
+
+- **Leaderboard**
+	- Wake history tracking per member.
+	- Rank calculations across time windows.
+	- Streak computation and top-member display.
+
 - **Permissions Handling**
 	- Android permission flow for location / nearby devices / bluetooth scan.
 	- Camera permission flow for QR scanning.
@@ -81,7 +98,10 @@ This project was built to make waking up more accountable and social:
 - **Framework:** Flutter (Dart)
 - **State management:** Provider + ChangeNotifier
 - **Storage:** SharedPreferences
+- **Alarm scheduling:** alarm
 - **QR scanning:** mobile_scanner
+- **QR generation:** qr_flutter
+- **P2P connectivity:** nearby_connections (Android path)
 - **Permissions:** permission_handler
 - **Typography/UI:** Google Fonts + Material 3
 - **Platforms:** Android, iOS, Web, Windows, macOS, Linux (Flutter targets)
@@ -91,6 +111,9 @@ Main dependencies are defined in `pubspec.yaml`:
 - `provider`
 - `shared_preferences`
 - `mobile_scanner`
+- `qr_flutter`
+- `alarm`
+- `nearby_connections`
 - `permission_handler`
 - `google_fonts`
 
@@ -111,8 +134,12 @@ lib/
 		challenge/
 		leaderboard/
 	services/
+		alarm/
+			alarm_service.dart
 		circle/
 			wake_circle_service.dart
+		leaderboard/
+			history_service.dart
 		p2p/
 			p2p_repository_factory.dart
 			hybrid_p2p_repository.dart
@@ -188,7 +215,23 @@ For QR + nearby discovery flows on Android, grant requested permissions when pro
 
 ## Roadmap (Next)
 
-- Replace simulated transport behavior with production Nearby/Wi-Fi Direct implementation.
-- Add real alarm scheduling + background wake trigger.
-- Persist leaderboard history and streak calculations.
-- Add end-to-end squad host/join testing on physical devices.
+### v0.2 — Reliability Foundation
+
+- Add recurring alarm support with day-based scheduling.
+- Improve alarm behavior across app restart, device reboot, and background state.
+- Finalize circle reconnect flows (rejoin, stale-session cleanup).
+- Add unit tests for alarm and circle services.
+
+### v0.3 — Feature Completeness
+
+- Complete production-grade Wi-Fi transport path to complement Nearby.
+- Improve host/join sync stability on real Android devices.
+- Expand leaderboard with weekly reset, streak badges, and missed-day insights.
+- Add widget/integration tests for challenge, join, and wake-confirm flows.
+
+### Beta — Release Readiness
+
+- Add crash/error reporting and basic product analytics.
+- Complete QA matrix across supported Android versions/devices.
+- Polish onboarding and permission UX for first-time users.
+- Prepare store assets, release notes, and internal beta rollout checklist.

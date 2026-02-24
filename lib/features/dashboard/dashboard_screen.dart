@@ -1,74 +1,68 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/circle_models.dart';
 import '../../core/permissions.dart';
 import '../../core/wake_status_presenter.dart';
-import '../../services/alarm/alarm_service.dart';
 import 'dashboard_view_model.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback onAwakePressed;
+
+  const DashboardScreen({super.key, required this.onAwakePressed});
 
   @override
   Widget build(BuildContext context) {
     // Expecting DashboardViewModel to be provided by parent (HomeScreen)
-    return ChangeNotifierProvider<AlarmService>.value(
-      value: AlarmService(),
-      child: Scaffold(
-        backgroundColor: const Color(0xFF1A1A2E),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header (Time & Fajr Time)
-                const _HeaderSection(),
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1A2E),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header (Time & Fajr Time)
+              const _HeaderSection(),
 
-                const Spacer(),
+              const Spacer(),
 
-                // Main Action Button
-                const _WakeUpButton(),
+              // Main Action Button
+              _WakeUpButton(onAwakePressed: onAwakePressed),
 
-                const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-                Center(
-                  child: Text(
-                    "TAP TO ALERT SQUAD",
-                    style: GoogleFonts.poppins(
-                      color: const Color(
-                        0xFF0F3460,
-                      ), // Wait, this color might be too dark against dark bg? Maybe lighter green or just white/grey.
-                      // The prompt said Green is #0F3460, but typically green is brighter.
-                      // Let's stick to user request but ensure visibility. Actually 0F3460 is dark blue.
-                      // Maybe user meant #0F3460 is the "Toggled State" background or similar.
-                      // Let's use a standard green for the text or button if that hex is weird,
-                      // but I must follow instructions.
-                      // Wait, #0F3460 is "Dark Blue". #E94560 is "Pinkish Red".
-                      // If the user insists on #0F3460 for "Green" state, I will use it,
-                      // but I suspect they might mean the background of the button changes to that.
-                      // I'll stick to the requested hex codes for the button states.
-                      fontSize: 14,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w500,
-                    ).copyWith(color: Colors.white54), // Overriding color for visibility on dark bg
-                  ),
+              Center(
+                child: Text(
+                  "TAP TO ALERT SQUAD",
+                  style: GoogleFonts.poppins(
+                    color: const Color(
+                      0xFF0F3460,
+                    ), // Wait, this color might be too dark against dark bg? Maybe lighter green or just white/grey.
+                    // The prompt said Green is #0F3460, but typically green is brighter.
+                    // Let's stick to user request but ensure visibility. Actually 0F3460 is dark blue.
+                    // Maybe user meant #0F3460 is the "Toggled State" background or similar.
+                    // Let's use a standard green for the text or button if that hex is weird,
+                    // but I must follow instructions.
+                    // Wait, #0F3460 is "Dark Blue". #E94560 is "Pinkish Red".
+                    // If the user insists on #0F3460 for "Green" state, I will use it,
+                    // but I suspect they might mean the background of the button changes to that.
+                    // I'll stick to the requested hex codes for the button states.
+                    fontSize: 14,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ).copyWith(color: Colors.white54), // Overriding color for visibility on dark bg
                 ),
+              ),
 
-                const Spacer(),
+              const Spacer(),
 
-                // Alarm section
-                const _AlarmSection(),
+              // Squad Status
+              const _SquadStatusSection(),
 
-                const SizedBox(height: 16),
-
-                // Squad Status
-                const _SquadStatusSection(),
-
-                const SizedBox(height: 20),
-              ],
-            ),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
@@ -76,53 +70,91 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _HeaderSection extends StatelessWidget {
+class _HeaderSection extends StatefulWidget {
   const _HeaderSection();
 
   @override
+  State<_HeaderSection> createState() => _HeaderSectionState();
+}
+
+class _HeaderSectionState extends State<_HeaderSection> {
+  late DateTime _currentTime;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTime = DateTime.now();
+    // Update the time every minute
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final now = DateTime.now();
+      if (now.minute != _currentTime.minute) {
+        setState(() {
+          _currentTime = now;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return "$hour:$minute";
+  }
+
+  String _formatDate(DateTime date) {
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    final weekday = weekdays[date.weekday - 1];
+    final month = months[date.month - 1];
+
+    return "$weekday, ${date.day} $month";
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "04:15",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              "Wednesday, 27 Mar",
-              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
-            ),
-          ],
+        Text(
+          _formatTime(_currentTime),
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16213E),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.nights_stay, color: Color(0xFFE94560), size: 16),
-              const SizedBox(width: 8),
-              Text(
-                "Fajr 05:12 AM",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+        Text(
+          _formatDate(_currentTime),
+          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
         ),
       ],
     );
@@ -130,7 +162,9 @@ class _HeaderSection extends StatelessWidget {
 }
 
 class _WakeUpButton extends StatelessWidget {
-  const _WakeUpButton();
+  final VoidCallback onAwakePressed;
+
+  const _WakeUpButton({required this.onAwakePressed});
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +189,11 @@ class _WakeUpButton extends StatelessWidget {
             await PermissionManager.requestRequiredPermissions(context);
 
         if (!hasPermissions) {
+          return;
+        }
+
+        if (!isAwake) {
+          onAwakePressed();
           return;
         }
 
@@ -295,11 +334,8 @@ class _SquadStatusSection extends StatelessWidget {
                 isCurrentUser: true,
               ),
               ...friends.map(
-                (friend) => _buildUserAvatar(
-                  context,
-                  friend.name,
-                  friend.wakeStatus,
-                ),
+                (friend) =>
+                    _buildUserAvatar(context, friend.name, friend.wakeStatus),
               ),
             ],
           ),
@@ -358,125 +394,6 @@ class _SquadStatusSection extends StatelessWidget {
           style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
         ),
       ],
-    );
-  }
-}
-
-/// Compact alarm scheduling card shown just above the Squad Status section.
-class _AlarmSection extends StatelessWidget {
-  const _AlarmSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final alarmService = context.watch<AlarmService>();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: alarmService.hasAlarm
-                  ? const Color(0xFFE94560).withOpacity(0.15)
-                  : Colors.white10,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              alarmService.hasAlarm ? Icons.alarm_on : Icons.alarm_add,
-              color: alarmService.hasAlarm
-                  ? const Color(0xFFE94560)
-                  : Colors.white54,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Suhoor Alarm',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  alarmService.alarmLabel,
-                  style: GoogleFonts.poppins(
-                    color: alarmService.hasAlarm
-                        ? const Color(0xFFE94560)
-                        : Colors.white38,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (alarmService.hasAlarm)
-            IconButton(
-              icon: const Icon(
-                Icons.cancel_outlined,
-                color: Colors.white38,
-                size: 22,
-              ),
-              tooltip: 'Cancel alarm',
-              onPressed: () => alarmService.cancelAlarm(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: () async {
-              final pickedTime = await showTimePicker(
-                context: context,
-                initialTime: alarmService.nextAlarmTime ??
-                    const TimeOfDay(hour: 4, minute: 0),
-                helpText: 'Set Suhoor alarm',
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: const ColorScheme.dark(
-                        primary: Color(0xFFE94560),
-                        onPrimary: Colors.white,
-                        surface: Color(0xFF16213E),
-                        onSurface: Colors.white,
-                      ),
-                    ),
-                    child: child!,
-                  );
-                },
-              );
-
-              if (pickedTime == null) return;
-              if (!context.mounted) return;
-              await context.read<AlarmService>().scheduleAlarm(pickedTime);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFE94560),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0xFFE94560), width: 1),
-              ),
-            ),
-            child: Text(
-              alarmService.hasAlarm ? 'Change' : 'Set',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

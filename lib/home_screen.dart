@@ -24,49 +24,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToDashboardAndMarkAwake() {
-    // Mark as awake
-    // We need to access the DashboardViewModel.
-    // Since DashboardScreen has its own ChangeNotifierProvider, we might need to lift the state up
-    // or access it if it was provided above.
-    //
-    // Looking at DashboardScreen, it creates the provider:
-    // ChangeNotifierProvider(create: (_) => DashboardViewModel(), ...)
-    //
-    // This means the state is local to DashboardScreen and lost when we switch tabs if purely switching widgets.
-    // However, usually for a tab app, we want the state to persist.
-    // I should probably lift the ChangeNotifierProvider to main.dart or HomeScreen.
-    //
-    // For now, I will keep the structure simple but be aware that switching tabs might reset Dashboard state
-    // if I just simply toggle bodies. usage of IndexedStack helps preserve state.
-
     setState(() {
       _selectedIndex = 0;
     });
   }
 
+  void _showAwakeChallenge(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) {
+          return Consumer<DashboardViewModel>(
+            builder: (context, viewModel, _) {
+              return ChallengeScreen(
+                onDismissed: () async {
+                  viewModel.markAsAwake();
+                  await JoinSquadViewModel.markCurrentDeviceAwakePersisted();
+                  if (!context.mounted) {
+                    return;
+                  }
+                  Navigator.of(context).maybePop();
+                  _navigateToDashboardAndMarkAwake();
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // We need to hoist the DashboardViewModel so it can be accessed by the ChallengeScreen's onDismissed
-    // (if we want to update the dashboard state) and to persist across tab switches.
     return ChangeNotifierProvider(
       create: (_) => DashboardViewModel(),
       child: Scaffold(
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            const DashboardScreen(), // We need to update DashboardScreen to consume the provider instead of creating it
-            const LeaderboardScreen(), // Leaderboard Screen
-            Consumer<DashboardViewModel>(
-              builder: (context, viewModel, _) {
-                return ChallengeScreen(
-                  onDismissed: () async {
-                    viewModel.markAsAwake();
-                    await JoinSquadViewModel.markCurrentDeviceAwakePersisted();
-                    _navigateToDashboardAndMarkAwake();
-                  },
-                );
-              },
-            ),
+            DashboardScreen(onAwakePressed: () => _showAwakeChallenge(context)),
+            const LeaderboardScreen(),
           ],
         ),
         bottomNavigationBar: Theme(
@@ -95,13 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.leaderboard_outlined),
                 activeIcon: Icon(Icons.leaderboard),
                 label: 'Squads',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.alarm),
-                activeIcon: Icon(
-                  Icons.alarm_on,
-                ), // Or create a custom challenge icon
-                label: 'Challenge',
               ),
             ],
           ),
