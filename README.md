@@ -12,13 +12,14 @@ Build a simple, focused social wake-up experience where:
 - Everyone can confirm they are awake.
 - The group can see wake status in one place.
 
-## Project Status (Updated: Feb 23, 2026)
+## Project Status (Updated: Feb 24, 2026)
 
 This project is in **active MVP** state.
 
 ### Working now
 
-- App shell with 3 tabs: Dashboard, Squads, Challenge.
+- App shell with 2 tabs: Dashboard and Squads.
+- Challenge flow opens as a dedicated screen from Dashboard actions.
 - Alarm scheduling and persistence with the `alarm` package.
 - Wake challenge flow (math keypad) to confirm awake status.
 - Squad join flow using QR scan + payload parsing.
@@ -44,8 +45,8 @@ Add your screenshots under a `screenshots/` folder at the project root, then upd
 Suggested captures:
 
 - Dashboard tab with wake button and squad status.
-- Challenge tab showing the math challenge keypad.
-- Join Squad tab (and QR scan screen).
+- Wake challenge screen showing the math challenge keypad.
+- Squads tab (and QR scan screen).
 
 ## Features
 
